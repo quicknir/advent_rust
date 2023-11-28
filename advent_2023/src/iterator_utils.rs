@@ -3,19 +3,19 @@ use std::collections::HashMap;
 use std::collections::HashSet;
     
 pub trait HashIterator: Sized + Iterator {
-    type K: Eq+Hash;
-    type V;
     type H: FromIterator<Self::Item>;
 }
 
 impl<T1: Eq+Hash, T2,  T: Iterator<Item=(T1, T2)>> HashIterator for T {
-    type K = T1;
-    type V = T2;
-    type H = HashMap<Self::K, Self::V>;
+    type H = HashMap<T1, T2>;
 }
 
-pub trait StringRefIterator: Sized + Iterator {
+pub trait ResultHashIterator: Sized + Iterator {
+    type H: FromIterator<Self::Item>;
+}
 
+impl<T1: Eq+Hash, T2,  E, T: Iterator<Item=Result<(T1, T2), E>>> ResultHashIterator for T {
+    type H = Result<HashMap<T1, T2>, E>;
 }
 
 pub trait IteratorExts : Iterator {
@@ -31,14 +31,11 @@ pub trait IteratorExts : Iterator {
     fn try_hashset<T: Eq+Hash, E>(self) -> Result<HashSet<T>, E> where Self: Sized, Result<HashSet<T>, E>: FromIterator<Self::Item> {
         self.collect::<Result<HashSet<_>, _>>()
     }
-    fn to_hashmap<K: Eq+Hash, V>(self) -> HashMap<K, V> where Self: Sized, HashMap<K, V>: FromIterator<Self::Item> {
-        self.collect::<HashMap<_, _>>()
-    }
-    fn to_hashmap2(self) -> Self::H where Self: HashIterator {
+    fn to_hashmap(self) -> Self::H where Self: HashIterator {
         self.collect::<Self::H>()
     }
-    fn try_hashmap<K: Eq+Hash, V, E>(self) -> Result<HashMap<K, V>, E> where Self: Sized, Result<HashMap<K, V>, E>: FromIterator<Self::Item> {
-        self.collect::<Result<HashMap<_, _>, _>>()
+    fn try_hashmap(self) -> Self::H where Self: ResultHashIterator {
+        self.collect::<Self::H>()
     }
 
     fn chunked_iterator(self) -> impl Iterator<Item=Vec<Self::Item>> where Self::Item : AsRef<str>, Self: Sized {
