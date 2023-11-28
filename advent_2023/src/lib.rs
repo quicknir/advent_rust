@@ -10,5 +10,8 @@ pub use point::Point;
 mod grid;
 pub use grid::{Coord, Grid};
 
+mod iterator_utils;
+pub use iterator_utils::IteratorExts;
+
 // Commonly used containers
 pub use std::collections::{HashSet, HashMap};
