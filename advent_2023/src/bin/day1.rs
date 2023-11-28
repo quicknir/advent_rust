@@ -1,3 +1,3 @@
 fn main() {
-    let input = utils::read_aoc_lines!();
+    let _input = utils::read_aoc_lines!();
 }
