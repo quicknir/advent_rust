@@ -1,6 +1,5 @@
 use utils::*;
 
-
 fn process_line1(line: &str) -> usize {
     let mut it = line.chars().filter_map(|x| x.to_digit(10));
     let first = it.next().unwrap();
@@ -8,8 +7,11 @@ fn process_line1(line: &str) -> usize {
     (10 * first + last) as usize
 }
 
-fn part1(input: impl Iterator<Item = impl AsRef<str>>) -> usize {
-    input.map(|x| process_line1(x.as_ref())).sum()
+fn part1(input: &str) -> usize {
+    input
+        .split_terminator("\n")
+        .map(|x| process_line1(x.as_ref()))
+        .sum()
 }
 
 const WORD_DIGITS: [&str; 9] = [
@@ -24,10 +26,9 @@ fn process_line2(mut line: &str) -> usize {
             let x = x as usize;
             first.get_or_insert(x);
             last = Some(x);
-        }
-        else if let Some(i) = WORD_DIGITS.iter().position(|x| line.starts_with(x)) {
-            first.get_or_insert(i+1);
-            last = Some(i+1);
+        } else if let Some(i) = WORD_DIGITS.iter().position(|x| line.starts_with(x)) {
+            first.get_or_insert(i + 1);
+            last = Some(i + 1);
             line = line.strip_prefix(WORD_DIGITS[i]).unwrap();
             continue;
         }
@@ -36,8 +37,11 @@ fn process_line2(mut line: &str) -> usize {
     10 * first.unwrap() + last.unwrap()
 }
 
-fn part2(input: impl Iterator<Item = impl AsRef<str>>) -> usize {
-    input.map(|x| process_line2(x.as_ref())).sum()
+fn part2(input: &str) -> usize {
+    input
+        .split_terminator("\n")
+        .map(|x| process_line2(x.as_ref()))
+        .sum()
 }
 
 #[cfg(test)]
@@ -45,25 +49,26 @@ mod tests {
     use crate::*;
     #[test]
     fn test_part1() {
-        let test_input = ["1abc2", "pqr3stu8vwx", "a1b2c3d4e5f", "treb7uchet"];
-        assert_eq!(part1(test_input.iter()), 142);
+        let test_input = "1abc2\npqr3stu8vwx\na1b2c3d4e5f\ntreb7uchet\n";
+        assert_eq!(part1(test_input), 142);
     }
     #[test]
     fn test_part2() {
-        let test_input = [
-            "two1nine",
-            "eightwothree",
-            "abcone2threexyz",
-            "xtwone3four",
-            "4nineeightseven2",
-            "zoneight234",
-            "7pqrstsixteen",
-        ];
-        assert_eq!(part2(test_input.iter()), 281);
+        let test_input = "\
+            two1nine\n\
+            eightwothree\n\
+            abcone2threexyz\n\
+            xtwone3four\n\
+            4nineeightseven2\n\
+            zoneight234\n\
+            7pqrstsixteen\n\
+        ";
+        assert_eq!(part2(test_input), 281);
     }
 }
 
 fn main() {
-    println!("{:?}", part1(read_aoc_lines!()));
-    println!("{:?}", part2(read_aoc_lines!()));
+    let s = read_aoc!();
+    println!("{:?}", part1(&s));
+    println!("{:?}", part2(&s));
 }
