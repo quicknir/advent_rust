@@ -24,7 +24,7 @@ fn download_file(root_dir: &str, target_filename: &Path) {
         .parse()
         .unwrap();
     let cookie_path = target_filename.parent().unwrap().join("cookie.txt");
-    let cookie = read_to_string(&cookie_path).unwrap();
+    let cookie = read_to_string(&cookie_path).unwrap().strip_suffix("\n").unwrap().to_string();
     let day: i8 = target_filename
         .file_stem()
         .unwrap()
