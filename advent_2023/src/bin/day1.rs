@@ -29,8 +29,6 @@ fn process_line2(mut line: &str) -> usize {
         } else if let Some(i) = WORD_DIGITS.iter().position(|x| line.starts_with(x)) {
             first.get_or_insert(i + 1);
             last = Some(i + 1);
-            line = line.strip_prefix(WORD_DIGITS[i]).unwrap();
-            continue;
         }
         line = &line[1..];
     }
