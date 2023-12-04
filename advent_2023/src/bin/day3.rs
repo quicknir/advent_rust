@@ -5,94 +5,96 @@ enum Entry {
     Nothing,
     Part,
     MaybeGear,
-    Digit(i8),
+    Number(usize),
 }
 
-fn is_part(grid: &Grid<Entry, 2>, coord: [i64; 2]) -> bool {
-    let Some(x) = grid.get(coord) else {
-        return false;
-    };
-    match x {
-        Entry::Part | Entry::MaybeGear => true,
-        _ => false,
-    }
-}
-
-fn as_digit(grid: &Grid<Entry, 2>, coord: [i64; 2]) -> i64 {
-    if let Entry::Digit(d) = grid[coord] {
-        d as i64
-    } else {
-        unreachable!()
-    }
-}
-
-fn parse_grid(input: &str) -> Grid<Entry, 2> {
+fn parse_grid(input: &str) -> (Grid<Entry, 2>, Vec<i64>) {
     let width = input.find('\n').unwrap() as i64;
     let height = (input.len() as i64) / (width + 1);
     let mut grid = Grid::new(Entry::Nothing, &[width, height]);
-    for (row_index, row) in input.split_terminator('\n').enumerate() {
-        for (col_index, c) in row.chars().enumerate() {
-            if let Some(d) = c.to_digit(10) {
-                grid[[col_index as i64, row_index as i64]] = Entry::Digit(d as i8);
-            } else if c == '*' {
-                grid[[col_index as i64, row_index as i64]] = Entry::MaybeGear;
-            } else if c != '.' {
-                grid[[col_index as i64, row_index as i64]] = Entry::Part;
+    let mut values = vec![];
+    let mut id_num = 0;
+    for (row_index, mut row) in input.split_terminator('\n').enumerate() {
+        let mut col_index = 0;
+        while !row.is_empty() {
+            if row.chars().next().unwrap().is_digit(10) {
+                let non_digit = row.find(|x: char| !x.is_digit(10)).unwrap_or(row.len());
+                values.push(row[..non_digit].parse().unwrap());
+                row = &row[non_digit..];
+                let non_digit = non_digit as i64;
+                for i in col_index..(col_index + non_digit) {
+                    grid[[i, row_index as i64]] = Entry::Number(id_num);
+                }
+                col_index += non_digit;
+                id_num += 1;
+                continue;
             }
+            if row.starts_with('*') {
+                grid[[col_index, row_index as i64]] = Entry::MaybeGear;
+            } else if row.chars().next().unwrap() != '.' {
+                grid[[col_index, row_index as i64]] = Entry::Part;
+            }
+            col_index += 1;
+            row = &row[1..];
         }
     }
-    grid
+    (grid, values)
 }
 
+const NEIGHBORS: [[i64; 2]; 8] = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+    [-1, 1],
+];
+
 fn part1(input: &str) -> i64 {
-    let grid = parse_grid(input);
+    let (grid, values) = parse_grid(input);
     let [width, height] = grid.get_dims();
 
-    let mut result = 0;
+    let mut numbers = HashSet::new();
 
-    for row_index in 0..height as i64 {
-        let mut col_index = 0;
-        while let Some(start) =
-            (col_index..width).find(|i| matches!(grid[[*i, row_index]], Entry::Digit(_)))
-        {
-            let start = start as i64;
-            let end = (start..width)
-                .find(|i| !matches!(grid[[*i, row_index]], Entry::Digit(_)))
-                .unwrap_or(width);
-            col_index = end + 1;
-
-            let part_adjacent = is_part(&grid, [start - 1, row_index])
-                || is_part(&grid, [end, row_index])
-                || (start - 1..end + 1).any(|i| {
-                    is_part(&grid, [i, row_index - 1]) || is_part(&grid, [i, row_index + 1])
-                });
-            if part_adjacent {
-                result += (start..end).fold(0, |acc, i| 10 * acc + as_digit(&grid, [i, row_index]))
+    for row_index in 0..height {
+        for col_index in 0..width {
+            let c: Coord<2> = [col_index, row_index].into();
+            if !matches!(grid[c], Entry::MaybeGear | Entry::Part) {
+                continue;
+            }
+            for n in NEIGHBORS {
+                if let Some(Entry::Number(id)) = grid.get(c + n) {
+                    numbers.insert(*id);
+                }
             }
         }
     }
-    result
+    numbers.iter().map(|id| values[*id]).sum()
 }
 
 fn part2(input: &str) -> i64 {
-    let grid = parse_grid(input);
+    let (grid, values) = parse_grid(input);
     let [width, height] = grid.get_dims();
-    let neighbor_dirs = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-        [1, 1],
-        [1, -1],
-        [-1, -1],
-        [-1, 1],
-    ];
+    let mut numbers = HashSet::new();
     let mut result = 0;
+
     for row_index in 0..height {
         for col_index in 0..width {
-            for n in neighbor_dirs {
-
+            let c: Coord<2> = [col_index, row_index].into();
+            if !matches!(grid[c], Entry::MaybeGear) {
+                continue;
             }
+            for n in NEIGHBORS {
+                if let Some(Entry::Number(id)) = grid.get(c + n) {
+                    numbers.insert(*id);
+                }
+            }
+            if numbers.len() == 2 {
+                result += numbers.iter().fold(1, |acc, i| acc * values[*i]);
+            }
+            numbers.clear();
         }
     }
     result
@@ -122,7 +124,7 @@ mod tests {
     }
     #[test]
     fn test_part2() {
-        let test_input = "";
+        assert_eq!(467835, part2(TEST_INPUT));
     }
 }
 

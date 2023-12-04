@@ -7,7 +7,7 @@ pub struct Point<T, const N: usize> {
 }
 
 impl<T: Default, const N: usize> Point<T, N> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Point{data: std::array::from_fn(|_| Default::default())}
     }
 
