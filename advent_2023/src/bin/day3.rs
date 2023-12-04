@@ -41,15 +41,16 @@ fn parse_grid(input: &str) -> (Grid<Entry, 2>, Vec<i64>) {
     (grid, values)
 }
 
+// In this order to simplify part 2; this order of neighbors results in non-decreasing id's of Numbers
 const NEIGHBORS: [[i64; 2]; 8] = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-    [1, 1],
-    [1, -1],
     [-1, -1],
+    [0, -1],
+    [1, -1],
+    [-1, 0],
+    [1, 0],
     [-1, 1],
+    [0, 1],
+    [1, 1],
 ];
 
 fn part1(input: &str) -> i64 {
@@ -77,7 +78,7 @@ fn part1(input: &str) -> i64 {
 fn part2(input: &str) -> i64 {
     let (grid, values) = parse_grid(input);
     let [width, height] = grid.get_dims();
-    let mut numbers = HashSet::new();
+    let mut numbers = Vec::with_capacity(NEIGHBORS.len());
     let mut result = 0;
 
     for row_index in 0..height {
@@ -88,11 +89,13 @@ fn part2(input: &str) -> i64 {
             }
             for n in NEIGHBORS {
                 if let Some(Entry::Number(id)) = grid.get(c + n) {
-                    numbers.insert(*id);
+                    if Some(id) != numbers.last() {
+                        numbers.push(*id);
+                    }
                 }
             }
             if numbers.len() == 2 {
-                result += numbers.iter().fold(1, |acc, i| acc * values[*i]);
+                result += values[numbers[0]] * values[numbers[1]];
             }
             numbers.clear();
         }
