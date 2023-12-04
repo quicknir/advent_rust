@@ -1,48 +1,53 @@
+use microbench::{self, Options};
 use std::collections::VecDeque;
 use utils::*;
-use microbench::{self, Options};
 
-fn count_matches(input: &str, set: &mut HashSet<i32>) -> usize {
+fn count_matches(line: &str, set: &mut HashSet<i32>) -> usize {
     set.clear();
-    let (_card, input) = input.split_once(": ").unwrap();
-    let (winners, have) = input.split_once(" | ").unwrap();
-    set.extend(winners
-        .split_whitespace()
-        .map(|x| x.parse::<i32>().unwrap())
-);
+    let (_card, line) = line.split_once(": ").unwrap();
+    let (winners, have) = line.split_once(" | ").unwrap();
+    set.extend(
+        winners
+            .split_whitespace()
+            .map(|x| x.parse::<i32>().unwrap()),
+    );
     have.split_whitespace()
         .map(|x| x.parse().unwrap())
         .filter(|x| set.contains(x))
         .count()
 }
 
-fn part1(input: &str) -> usize {
+fn parse(input: &str) -> Vec<usize> {
     let mut set = HashSet::new();
     input
         .split_terminator('\n')
-        .map(|line| {
-            let matches = count_matches(line, &mut set);
-            if matches == 0 {
+        .map(|line| count_matches(line, &mut set))
+        .collect()
+}
+
+fn part1(matches: &[usize]) -> usize {
+    matches
+        .iter()
+        .map(|m| {
+            if *m == 0 {
                 0
             } else {
-                2usize.pow(matches as u32 - 1)
+                2usize.pow(*m as u32 - 1)
             }
         })
         .sum()
 }
 
-fn part2(input: &str) -> usize {
-    let mut set = HashSet::new();
+fn part2(matches: &[usize]) -> usize {
     let mut copies = VecDeque::new();
     let mut total_cards = 0;
-    for line in input.split_terminator('\n') {
+    for &m in matches.iter() {
         let cur_copies = copies.pop_front().unwrap_or(0) + 1;
         total_cards += cur_copies;
-        let matches = count_matches(line, &mut set);
-        if copies.len() < matches {
-            copies.resize(matches, 0);
+        if copies.len() < m {
+            copies.resize(m, 0);
         }
-        for i in 0..matches {
+        for i in 0..m {
             copies[i] += cur_copies;
         }
     }
@@ -62,19 +67,27 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
     use crate::*;
     #[test]
     fn test_part1() {
-        assert_eq!(13, part1(TEST_INPUT));
+        assert_eq!(13, part1(&parse(TEST_INPUT)));
     }
     #[test]
     fn test_part2() {
-        assert_eq!(30, part2(TEST_INPUT));
+        assert_eq!(30, part2(&parse(TEST_INPUT)));
     }
+}
+
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "part1", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
 }
 
 fn main() {
     let s = read_aoc!();
-    let options = Options::default();
-    microbench::bench(&options, "part1", || part1(&s));
-    microbench::bench(&options, "part2", || part2(&s));
-    println!("{:?}", part1(&s));
-    println!("{:?}", part2(&s));
+    let data = parse(&s);
+    println!("{:?}", part1(&data));
+    println!("{:?}", part2(&data));
+    benchmark(&s);
 }
