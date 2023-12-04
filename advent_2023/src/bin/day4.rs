@@ -1,26 +1,27 @@
 use std::collections::VecDeque;
 use utils::*;
+use microbench::{self, Options};
 
-fn count_matches(input: &str) -> usize {
+fn count_matches(input: &str, set: &mut HashSet<i32>) -> usize {
+    set.clear();
     let (_card, input) = input.split_once(": ").unwrap();
     let (winners, have) = input.split_once(" | ").unwrap();
-    let winners: HashSet<i32> = winners
-        .split(' ')
-        .filter(|x| !x.is_empty())
+    set.extend(winners
+        .split_whitespace()
+        .map(|x| x.parse::<i32>().unwrap())
+);
+    have.split_whitespace()
         .map(|x| x.parse().unwrap())
-        .collect();
-    have.split(' ')
-        .filter(|x| !x.is_empty())
-        .map(|x| x.parse().unwrap())
-        .filter(|x| winners.contains(x))
+        .filter(|x| set.contains(x))
         .count()
 }
 
 fn part1(input: &str) -> usize {
+    let mut set = HashSet::new();
     input
         .split_terminator('\n')
         .map(|line| {
-            let matches = count_matches(line);
+            let matches = count_matches(line, &mut set);
             if matches == 0 {
                 0
             } else {
@@ -31,12 +32,13 @@ fn part1(input: &str) -> usize {
 }
 
 fn part2(input: &str) -> usize {
+    let mut set = HashSet::new();
     let mut copies = VecDeque::new();
     let mut total_cards = 0;
     for line in input.split_terminator('\n') {
         let cur_copies = copies.pop_front().unwrap_or(0) + 1;
         total_cards += cur_copies;
-        let matches = count_matches(line);
+        let matches = count_matches(line, &mut set);
         if copies.len() < matches {
             copies.resize(matches, 0);
         }
@@ -70,6 +72,9 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 
 fn main() {
     let s = read_aoc!();
+    let options = Options::default();
+    microbench::bench(&options, "part1", || part1(&s));
+    microbench::bench(&options, "part2", || part2(&s));
     println!("{:?}", part1(&s));
     println!("{:?}", part2(&s));
 }
