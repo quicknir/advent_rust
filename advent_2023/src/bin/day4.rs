@@ -1,5 +1,5 @@
 use microbench::{self, Options};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, cmp::min};
 use utils::*;
 
 fn count_matches(line: &str, set: &mut HashSet<i32>) -> usize {
@@ -39,15 +39,12 @@ fn part1(matches: &[usize]) -> usize {
 }
 
 fn part2(matches: &[usize]) -> usize {
-    let mut copies = VecDeque::new();
+    let mut copies = vec![0; matches.len()];
     let mut total_cards = 0;
-    for &m in matches.iter() {
-        let cur_copies = copies.pop_front().unwrap_or(0) + 1;
+    for (i, &m) in matches.iter().enumerate() {
+        let cur_copies = copies[i] + 1;
         total_cards += cur_copies;
-        if copies.len() < m {
-            copies.resize(m, 0);
-        }
-        for i in 0..m {
+        for i in (i+1)..min(i+1+m, copies.len()){
             copies[i] += cur_copies;
         }
     }
@@ -77,9 +74,9 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 
 fn benchmark(s: &str) {
     let options = Options::default();
-    microbench::bench(&options, "part1", || {
         let data = parse(&s);
-        part1(&data);
+    microbench::bench(&options, "part1", || {
+        // part1(&data);
         part2(&data);
     });
 }
