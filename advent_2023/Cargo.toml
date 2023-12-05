@@ -12,5 +12,6 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 microbench = "0.5.0"
+rayon = "1.8.0"
 reqwest = { version = "0.11.22", features = ["blocking"] }
 thiserror = "1.0.50"
