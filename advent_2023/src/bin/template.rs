@@ -1,26 +1,35 @@
 use utils::*;
 
-fn part1(input: &str) {
+fn parse(input: &str) -> () {
+
 }
 
-fn part2(input: &str) {
+fn part1(data: &()) -> i64 {
+    0
+}
+
+fn part2(data: &()) -> i64 {
+    0
 }
 
 #[cfg(test)]
 mod tests {
+    const TEST_INPUT: &str = "";
     use crate::*;
     #[test]
     fn test_part1() {
-        let test_input = "";
+        assert_eq!(0, part1(&parse(TEST_INPUT)));
     }
     #[test]
     fn test_part2() {
-        let test_input = "";
+        assert_eq!(0, part1(&parse(TEST_INPUT)));
     }
 }
 
+
 fn main() {
     let s = read_aoc!();
-    println!("{:?}", part1(&s));
-    println!("{:?}", part2(&s));
+    let data = parse(&s)
+    println!("{:?}", part1(&data));
+    println!("{:?}", part2(&data));
 }
