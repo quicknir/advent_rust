@@ -1,4 +1,5 @@
 use utils::*;
+use microbench::{self, Options};
 
 #[derive(Debug, Clone, Copy)]
 enum Entry {
@@ -8,7 +9,7 @@ enum Entry {
     Number(usize),
 }
 
-fn parse_grid(input: &str) -> (Grid<Entry, 2>, Vec<i64>) {
+fn parse(input: &str) -> (Grid<Entry, 2>, Vec<i64>) {
     let width = input.find('\n').unwrap() as i64;
     let height = (input.len() as i64) / (width + 1);
     let mut grid = Grid::new(Entry::Nothing, &[width, height]);
@@ -53,8 +54,7 @@ const NEIGHBORS: [[i64; 2]; 8] = [
     [1, 1],
 ];
 
-fn part1(input: &str) -> i64 {
-    let (grid, values) = parse_grid(input);
+fn part1((grid, values): &(Grid<Entry, 2>, Vec<i64>)) -> i64 {
     let [width, height] = grid.get_dims();
 
     let mut numbers = HashSet::new();
@@ -75,8 +75,7 @@ fn part1(input: &str) -> i64 {
     numbers.iter().map(|id| values[*id]).sum()
 }
 
-fn part2(input: &str) -> i64 {
-    let (grid, values) = parse_grid(input);
+fn part2((grid, values): &(Grid<Entry, 2>, Vec<i64>)) -> i64 {
     let [width, height] = grid.get_dims();
     let mut numbers = Vec::with_capacity(NEIGHBORS.len());
     let mut result = 0;
@@ -122,17 +121,28 @@ mod tests {
     use crate::*;
     #[test]
     fn test_part1() {
-        let result = part1(TEST_INPUT);
+        let result = part1(&parse(TEST_INPUT));
         assert_eq!(4361, result);
     }
     #[test]
     fn test_part2() {
-        assert_eq!(467835, part2(TEST_INPUT));
+        assert_eq!(467835, part2(&parse(TEST_INPUT)));
     }
+}
+
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "part1", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
 }
 
 fn main() {
     let s = read_aoc!();
-    println!("{:?}", part1(&s));
-    println!("{:?}", part2(&s));
+    let data = parse(&s);
+    println!("{:?}", part1(&data));
+    println!("{:?}", part2(&data));
+    benchmark(&s);
 }
