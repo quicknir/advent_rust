@@ -1,19 +1,25 @@
-use rayon::prelude::*;
 use utils::*;
 
-#[derive(Debug)]
-struct Range {
+use std::{
+    cmp::{max, min},
+    ops::Range,
+};
+
+use microbench::{self, Options};
+
+#[derive(Debug, Clone, Copy)]
+struct MapRange {
     source_start: u64,
     dest_start: u64,
     length: u64,
 }
 
 #[derive(Debug)]
-struct RangeMap {
-    ranges: Vec<Range>,
+struct Map {
+    ranges: Vec<MapRange>,
 }
 
-impl RangeMap {
+impl Map {
     fn new<'a>(it: &mut impl Iterator<Item = &'a str>) -> (Self, bool) {
         it.next().unwrap(); // skip first line
         let mut ranges = vec![];
@@ -26,14 +32,14 @@ impl RangeMap {
             let mut nums = line.split(' ');
             let [dest_start, source_start, length] =
                 std::array::from_fn(|_| nums.next().unwrap().parse().unwrap());
-            ranges.push(Range {
+            ranges.push(MapRange {
                 source_start,
                 dest_start,
                 length,
             });
         }
         ranges.sort_by_key(|x| x.source_start);
-        (RangeMap { ranges }, more)
+        (Map { ranges }, more)
     }
     fn map(&self, source: u64) -> u64 {
         let one_past_index = self
@@ -51,9 +57,47 @@ impl RangeMap {
             source
         }
     }
+
+    fn map_ranges(&self, source: &[Range<u64>], dest: &mut Vec<Range<u64>>) {
+        dest.clear();
+        let mut i = 0;
+        for e in source {
+            let mut src = e.clone();
+            loop {
+                let Some(map_range) = self.ranges.get(i) else {
+                    dest.push(src);
+                    break;
+                };
+                if src.end <= map_range.source_start {
+                    dest.push(src);
+                    break;
+                }
+                let range_end = map_range.source_start + map_range.length;
+                if range_end <= src.start {
+                    i += 1;
+                    continue;
+                }
+                let [inter_start, inter_end] = [
+                    max(src.start, map_range.source_start),
+                    min(src.end, range_end),
+                ];
+                if inter_start > src.start {
+                    dest.push(src.start..inter_start);
+                }
+                let mapped_start = map_range.dest_start + inter_start - map_range.source_start;
+                dest.push(mapped_start..(mapped_start + inter_end - inter_start));
+                if inter_end < src.end {
+                    src.start = inter_end;
+                    i += 1;
+                    continue;
+                }
+                break;
+            }
+        }
+    }
 }
 
-fn parse(input: &str) -> (Vec<u64>, Vec<RangeMap>) {
+fn parse(input: &str) -> (Vec<u64>, Vec<Map>) {
     let mut lines = input.split_terminator('\n');
     let seeds = lines
         .next()
@@ -66,7 +110,7 @@ fn parse(input: &str) -> (Vec<u64>, Vec<RangeMap>) {
     lines.next().unwrap();
     let mut maps = vec![];
     loop {
-        let (map, more) = RangeMap::new(&mut lines);
+        let (map, more) = Map::new(&mut lines);
         maps.push(map);
         if !more {
             break;
@@ -75,27 +119,42 @@ fn parse(input: &str) -> (Vec<u64>, Vec<RangeMap>) {
     (seeds, maps)
 }
 
-fn map_seed(seed: u64, maps: &Vec<RangeMap>) -> u64 {
+fn map_seed(seed: u64, maps: &Vec<Map>) -> u64 {
     maps.iter().fold(seed, |acc, e| {
         let x = e.map(acc);
-        // println!("{x}");
         x
     })
 }
 
-fn part1(data: &(Vec<u64>, Vec<RangeMap>)) -> u64 {
+fn part1(data: &(Vec<u64>, Vec<Map>)) -> u64 {
     let (seeds, maps) = data;
     seeds.iter().map(|s| map_seed(*s, maps)).min().unwrap()
 }
 
-fn part2(data: &(Vec<u64>, Vec<RangeMap>)) -> u64 {
+fn seeds_to_ranges(seeds: &[u64]) -> Vec<Range<u64>> {
+    seeds.chunks_exact(2).map(|x| x[0]..(x[0] + x[1])).to_vec()
+}
+
+fn part2(data: &(Vec<u64>, Vec<Map>)) -> u64 {
     let (seeds, maps) = data;
-    seeds
-        .par_chunks_exact(2)
-        .flat_map(|x| (x[0]..(x[0] + x[1])))
-        .map(|s| map_seed(s, maps))
-        .min()
-        .unwrap()
+    let mut input = seeds_to_ranges(&seeds);
+    input.sort_by_key(|x| x.start);
+    let mut output = vec![];
+    for map in maps {
+        map.map_ranges(&input, &mut output);
+        output.sort_by_key(|x| x.start);
+        input.clear();
+        input.push(output.first().unwrap().clone());
+        for r in &output[1..] {
+            let cur_last = input.last_mut().unwrap();
+            if cur_last.end >= r.start {
+                cur_last.end = max(cur_last.end, r.end)
+            } else {
+                input.push(r.clone());
+            }
+        }
+    }
+    output.first().unwrap().start
 }
 
 #[cfg(test)]
@@ -144,6 +203,38 @@ humidity-to-location map:
     fn test_part2() {
         assert_eq!(46, part2(&parse(TEST_INPUT)));
     }
+    #[test]
+    fn test_map_range() {
+        let (seeds, maps) = parse(TEST_INPUT);
+        let mut input = seeds_to_ranges(&seeds);
+        input.sort_by_key(|x| x.start);
+        let mut output = vec![];
+        maps[0].map_ranges(&input, &mut output);
+        output.sort_by_key(|x| x.start);
+        assert_eq!(vec![57..70, 81..95], output);
+    }
+    #[test]
+    fn test_light_to_temp() {
+        let (_seeds, maps) = parse(TEST_INPUT);
+        let mut output = vec![];
+        maps[4].map_ranges(&[77..78], &mut output);
+        assert_eq!(vec![45..46], output);
+    }
+}
+
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "parsing", || {
+        let data = parse(&s);
+    });
+    let data = parse(&s);
+    microbench::bench(&options, "part1", || {
+        part1(&data);
+    });
+    microbench::bench(&options, "part2", || {
+        part2(&data);
+    });
+    part2(&data);
 }
 
 fn main() {
@@ -151,4 +242,5 @@ fn main() {
     let data = parse(&s);
     println!("{:?}", part1(&data));
     println!("{:?}", part2(&data));
+    benchmark(&s);
 }
