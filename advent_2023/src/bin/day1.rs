@@ -1,4 +1,5 @@
 use utils::*;
+use microbench::{self, Options};
 
 fn process_line1(line: &str) -> usize {
     let mut it = line.chars().filter_map(|x| x.to_digit(10));
@@ -65,8 +66,17 @@ mod tests {
     }
 }
 
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "combined", || {
+        part1(&s);
+        part2(&s);
+    });
+}
+
 fn main() {
     let s = read_aoc!();
     println!("{:?}", part1(&s));
     println!("{:?}", part2(&s));
+    benchmark(&s);
 }
