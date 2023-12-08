@@ -29,7 +29,7 @@ mod tests {
 
 fn main() {
     let s = read_aoc!();
-    let data = parse(&s)
+    let data = parse(&s);
     println!("{:?}", part1(&data));
     println!("{:?}", part2(&data));
 }
