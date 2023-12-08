@@ -132,7 +132,7 @@ mod tests {
 
 fn benchmark(s: &str) {
     let options = Options::default();
-    microbench::bench(&options, "part1", || {
+    microbench::bench(&options, "combined", || {
         let data = parse(&s);
         part1(&data);
         part2(&data);
