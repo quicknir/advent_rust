@@ -38,7 +38,7 @@ impl Map {
                 length,
             });
         }
-        ranges.sort_by_key(|x| x.source_start);
+        ranges.sort_unstable_by_key(|x| x.source_start);
         (Map { ranges }, more)
     }
     fn map(&self, source: u64) -> u64 {
@@ -138,11 +138,11 @@ fn seeds_to_ranges(seeds: &[u64]) -> Vec<Range<u64>> {
 fn part2(data: &(Vec<u64>, Vec<Map>)) -> u64 {
     let (seeds, maps) = data;
     let mut input = seeds_to_ranges(&seeds);
-    input.sort_by_key(|x| x.start);
+    input.sort_unstable_by_key(|x| x.start);
     let mut output = vec![];
     for map in maps {
         map.map_ranges(&input, &mut output);
-        output.sort_by_key(|x| x.start);
+        output.sort_unstable_by_key(|x| x.start);
         input.clear();
         input.push(output.first().unwrap().clone());
         for r in &output[1..] {
@@ -207,10 +207,10 @@ humidity-to-location map:
     fn test_map_range() {
         let (seeds, maps) = parse(TEST_INPUT);
         let mut input = seeds_to_ranges(&seeds);
-        input.sort_by_key(|x| x.start);
+        input.sort_unstable_by_key(|x| x.start);
         let mut output = vec![];
         maps[0].map_ranges(&input, &mut output);
-        output.sort_by_key(|x| x.start);
+        output.sort_unstable_by_key(|x| x.start);
         assert_eq!(vec![57..70, 81..95], output);
     }
     #[test]
@@ -225,7 +225,7 @@ humidity-to-location map:
 fn benchmark(s: &str) {
     let options = Options::default();
     microbench::bench(&options, "parsing", || {
-        let data = parse(&s);
+        parse(&s);
     });
     let data = parse(&s);
     microbench::bench(&options, "part1", || {
@@ -234,7 +234,6 @@ fn benchmark(s: &str) {
     microbench::bench(&options, "part2", || {
         part2(&data);
     });
-    part2(&data);
 }
 
 fn main() {
