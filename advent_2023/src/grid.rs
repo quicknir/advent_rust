@@ -4,6 +4,7 @@ use crate::Point;
 
 pub type Coord<const RANK: usize> = Point<i64, RANK>;
 
+#[derive(Clone)]
 pub struct Grid<T, const RANK: usize> {
     data: Vec<T>,
     dims: [i64; RANK],
@@ -56,6 +57,17 @@ impl<T, const RANK: usize> Grid<T, RANK> {
             .zip(coord.as_ref())
             .fold(0, |acc: i64, (x, y)| acc + x * *y);
         return Some(dot_product as usize);
+    }
+}
+
+impl Grid<bool, 2> {
+    pub fn print(&self) {
+        for row in 0..self.dims[1] {
+            let s: String = (0..self.dims[0])
+                .map(|col| if self[[col, row]] { '*' } else { '.' })
+                .collect();
+            println!("{}", s);
+        }
     }
 }
 
