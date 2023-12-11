@@ -99,17 +99,9 @@ fn benchmark(s: &str) {
     microbench::bench(&options, "parsing", || {
         parse(&s);
     });
-    let data = parse(&s);
-    microbench::bench(&options, "part1", || {
-        part1(&data);
-    });
-    microbench::bench(&options, "part2", || {
-        part2(&data);
-    });
     microbench::bench(&options, "combined", || {
         let data = parse(&s);
-        part1(&data);
-        part2(&data);
+        (part1(&data), part2(&data))
     });
 }
 
