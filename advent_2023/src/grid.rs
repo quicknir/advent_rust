@@ -4,7 +4,7 @@ use crate::Point;
 
 pub type Coord<const RANK: usize> = Point<i64, RANK>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Grid<T, const RANK: usize> {
     data: Vec<T>,
     dims: [i64; RANK],
