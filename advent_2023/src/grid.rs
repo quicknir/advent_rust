@@ -4,7 +4,7 @@ use crate::Point;
 
 pub type Coord<const RANK: usize> = Point<i64, RANK>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Grid<T, const RANK: usize> {
     data: Vec<T>,
     dims: [i64; RANK],
@@ -24,6 +24,23 @@ impl<T: Clone, const RANK: usize> Grid<T, RANK> {
             dims: *dims,
             multipliers,
         }
+    }
+    pub fn from_data(data: Vec<T>, dims: &[i64; RANK]) -> Grid<T, RANK> {
+        let mut cum_product = 1;
+        let multipliers = std::array::from_fn(|i| {
+            let x = cum_product;
+            cum_product *= dims[i];
+            x
+        });
+        assert_eq!(data.len(), cum_product as usize);
+        Grid {
+            data,
+            dims: *dims,
+            multipliers,
+        }
+    }
+    pub fn get_data(&self) -> &Vec<T> {
+        &self.data
     }
 }
 
