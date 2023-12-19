@@ -209,20 +209,6 @@ fn part2(data: &Parsed) -> u64 {
     accepted_ranges
 }
 
-#[cfg(test)]
-mod tests {
-    const TEST_INPUT: &str = "";
-    use crate::*;
-    #[test]
-    fn test_part1() {
-        assert_eq!(0, part1(&parse(TEST_INPUT)));
-    }
-    #[test]
-    fn test_part2() {
-        assert_eq!(0, part1(&parse(TEST_INPUT)));
-    }
-}
-
 fn benchmark(s: &str) {
     let options = Options::default();
     microbench::bench(&options, "parsing", || {
