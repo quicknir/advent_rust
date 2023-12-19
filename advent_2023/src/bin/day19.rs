@@ -53,7 +53,8 @@ fn parse(input: &str) -> Parsed {
     let (workflow_text, part_text) = input.split_once("\n\n").unwrap();
 
     let mut workflows = vec![Workflow::default()];
-    let mut index_map = HashMap::from([("in", 0), ("A", ACCEPT), ("R", REJECT)]);
+    let mut index_map = HashMap::with_capacity(input.len());
+    index_map.extend([("in", 0), ("A", ACCEPT), ("R", REJECT)]);
     for line in workflow_text.split('\n') {
         let (workflow_name, rest) = line.split_once('{').unwrap();
         let workflow_index = get_index(&mut index_map, &mut workflows, workflow_name) as usize;
