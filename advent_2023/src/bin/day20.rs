@@ -2,7 +2,6 @@ use microbench::{self, Options};
 use std::collections::VecDeque;
 use utils::*;
 
-type Parsed = (HashMap<String, Module>, Vec<String>);
 type IndexType = u16;
 
 #[derive(Debug, Clone, Copy)]
@@ -13,8 +12,8 @@ enum PulseHeight {
 
 #[derive(Debug)]
 struct Pulse {
-    src: String,
-    dest: String,
+    src: IndexType,
+    dest: IndexType,
     height: PulseHeight,
 }
 
@@ -24,137 +23,213 @@ struct FlipFlopModule {
 }
 #[derive(Debug, Clone)]
 struct ConjunctionModule {
-    memory: HashMap<String, PulseHeight>,
+    memory: Vec<IndexType>,
 }
 
 #[derive(Debug, Clone)]
 enum ModuleKind {
     FlipFlop(FlipFlopModule),
     Conjunction(ConjunctionModule),
+    Broadcaster,
+    Test,
 }
 
 #[derive(Debug, Clone)]
 struct Module {
-    outputs: Vec<String>,
+    outputs: Vec<IndexType>,
+    last_pulse: PulseHeight,
     kind: ModuleKind,
 }
 
-fn parse(input: &str) -> (HashMap<String, Module>, Vec<String>) {
-    let mut broadcaster = vec![];
-    let mut modules = HashMap::new();
+type Parsed = Vec<Module>;
+
+impl Default for Module {
+    fn default() -> Self {
+        Self {
+            outputs: Default::default(),
+            last_pulse: PulseHeight::Low,
+            kind: ModuleKind::Test,
+        }
+    }
+}
+
+fn get_index<'a, 'b: 'a>(
+    index_map: &mut HashMap<&'a str, IndexType>,
+    modules: &mut Vec<Module>,
+    name: &'b str,
+) -> IndexType {
+    *index_map.entry(name).or_insert_with(|| {
+        modules.push(Module::default());
+        modules.len() as IndexType - 1
+    })
+}
+
+fn parse(input: &str) -> Parsed {
+    let mut modules = vec![
+        Module {
+            kind: ModuleKind::Broadcaster,
+            ..Default::default()
+        },
+        Module::default(),
+    ];
+    let mut index_map = HashMap::with_capacity(1000);
+    index_map.extend([("broadcaster", 0), ("rx", 1)]);
 
     for line in input.split_terminator('\n') {
         let (first, last) = line.split_once(" -> ").unwrap();
-        let outputs = last.split(", ").map(|s| s.to_string()).to_vec();
-        match line.chars().next().unwrap() {
-            '%' => {
-                modules.insert(
-                    first[1..].to_string(),
-                    Module {
-                        outputs,
-                        kind: ModuleKind::FlipFlop(FlipFlopModule { is_on: false }),
-                    },
-                );
-            }
-            '&' => {
-                modules.insert(
-                    first[1..].to_string(),
-                    Module {
-                        outputs,
-                        kind: ModuleKind::Conjunction(ConjunctionModule {
-                            memory: Default::default(),
-                        }),
-                    },
-                );
-            }
-            _ => broadcaster = outputs,
+        let (name, kind) = match line.chars().next().unwrap() {
+            '%' => (
+                &first[1..],
+                ModuleKind::FlipFlop(FlipFlopModule { is_on: false }),
+            ),
+            '&' => (
+                &first[1..],
+                ModuleKind::Conjunction(ConjunctionModule {
+                    memory: Default::default(),
+                }),
+            ),
+            _ => ("broadcaster", ModuleKind::Broadcaster),
         };
+        let cur_module_index = get_index(&mut index_map, &mut modules, name) as usize;
+        let mut cur_module = std::mem::take(&mut modules[cur_module_index]);
+        cur_module.kind = kind;
+        cur_module.outputs.extend(
+            last.split(", ")
+                .map(|s| get_index(&mut index_map, &mut modules, s)),
+        );
+        modules[cur_module_index] = cur_module;
     }
-    let keys = modules.keys().cloned().to_vec();
 
-    for key in keys {
-        let outputs = modules.get(&key).unwrap().outputs.clone();
-
-        for output in outputs {
-            // some outputs are not in the graph, "test" outputs
-            let Some(x) = modules.get_mut(&output) else {
+    for input in 0..modules.len() {
+        for output_index in 0..modules[input].outputs.len() {
+            let output = modules[input].outputs[output_index];
+            let ModuleKind::Conjunction(ref mut x) = modules[output as usize].kind else {
                 continue;
             };
-            let ModuleKind::Conjunction(ref mut x) = x.kind else {
-                continue;
-            };
-            x.memory.insert(key.clone(), PulseHeight::Low);
+            x.memory.push(input as IndexType);
         }
     }
+    modules
+}
 
-    // println!("{:?}, {:?}", modules, broadcaster);
+fn press_button<F: FnMut(&Pulse) -> bool>(
+    modules: &mut Vec<Module>,
+    pulses: &mut VecDeque<Pulse>,
+    mut f: F,
+) -> bool {
+    pulses.extend(modules[0].outputs.iter().map(|&x| Pulse {
+        src: 0,
+        dest: x,
+        height: PulseHeight::Low,
+    }));
+    while let Some(cur_pulse) = pulses.pop_front() {
+        modules[cur_pulse.src as usize].last_pulse = cur_pulse.height;
+        // call func
+        if f(&cur_pulse) {
+            return true;
+        }
 
-    (modules, broadcaster)
+        // take to dodge borrow checker issues
+        let mut cur_module = std::mem::take(&mut modules[cur_pulse.dest as usize]);
+        let maybe_height = match cur_module.kind {
+            ModuleKind::FlipFlop(ref mut f) => {
+                if let PulseHeight::High = cur_pulse.height {
+                    None
+                } else if f.is_on {
+                    f.is_on = false;
+                    Some(PulseHeight::Low)
+                } else {
+                    f.is_on = true;
+                    Some(PulseHeight::High)
+                }
+            }
+            ModuleKind::Conjunction(ref mut c) => {
+                if c.memory
+                    .iter()
+                    .all(|&x| matches!(modules[x as usize].last_pulse, PulseHeight::High))
+                {
+                    Some(PulseHeight::Low)
+                } else {
+                    Some(PulseHeight::High)
+                }
+            }
+            ModuleKind::Broadcaster => unreachable!(),
+            ModuleKind::Test => None,
+        };
+        maybe_height.map(|new_height| {
+            for &o in &cur_module.outputs {
+                pulses.push_back(Pulse {
+                    src: cur_pulse.dest,
+                    dest: o,
+                    height: new_height,
+                });
+            }
+        });
+        // put back what we took
+        modules[cur_pulse.dest as usize] = cur_module;
+    }
+    false
 }
 
 fn part1(data: &Parsed) -> u64 {
-    let (mut modules, broadcaster) = (*data).clone();
+    let mut modules = data.to_owned();
     let mut pulses = VecDeque::<Pulse>::new();
     let mut low_pulses = 0;
     let mut high_pulses = 0;
 
-    for _ in 0..1000 {
-        low_pulses += 1; // button
-        pulses.extend(broadcaster.iter().map(|x| Pulse {
-            src: "broadcaster".to_string(),
-            dest: x.clone(),
-            height: PulseHeight::Low,
-        }));
-
-        while let Some(cur_pulse) = pulses.pop_front() {
-            if let PulseHeight::Low = cur_pulse.height {
-                low_pulses += 1;
-            } else {
-                high_pulses += 1;
-            }
-            // some modules not in map as they are output only
-            let Some(cur_module) = modules.get_mut(&cur_pulse.dest) else {
-                continue;
-            };
-            let maybe_height = match cur_module.kind {
-                ModuleKind::FlipFlop(ref mut f) => {
-                    if let PulseHeight::High = cur_pulse.height {
-                        None
-                    } else if f.is_on {
-                        f.is_on = false;
-                        Some(PulseHeight::Low)
-                    } else {
-                        f.is_on = true;
-                        Some(PulseHeight::High)
-                    }
-                }
-                ModuleKind::Conjunction(ref mut c) => {
-                    *c.memory.get_mut(&cur_pulse.src).unwrap() = cur_pulse.height;
-                    // println!("{:?}", c.memory);
-                    if c.memory.values().all(|x| matches!(*x, PulseHeight::High)) {
-                        Some(PulseHeight::Low)
-                    } else {
-                        Some(PulseHeight::High)
-                    }
-                }
-            };
-            maybe_height.map(|new_height| {
-                for d in &cur_module.outputs {
-                    pulses.push_back(Pulse {
-                        src: cur_pulse.dest.clone(),
-                        dest: d.clone(),
-                        height: new_height,
-                    });
-                }
-            });
+    let mut f = |cur_pulse: &Pulse| {
+        if let PulseHeight::Low = cur_pulse.height {
+            low_pulses += 1;
+        } else {
+            high_pulses += 1;
         }
+        false
+    };
+    for _ in 0..1000 {
+        press_button(&mut modules, &mut pulses, &mut f);
     }
-
-    low_pulses * high_pulses
+    return (low_pulses + 1000) * high_pulses;
 }
 
-fn part2(data: &Parsed) -> i64 {
-    0
+fn part2(data: &Parsed) -> u64 {
+    let mut modules = data.to_owned();
+    let mut pulses = VecDeque::<Pulse>::new();
+
+    // we will assume that rx is fed by a single conjunctive input. Find all of the inputs of that input.
+    // See how long it takes them each to send their first high; multiply to get rx's first low
+    // rx is at index 1; convention established by parse
+    let conj_index = modules.iter().position(|m| m.outputs.contains(&1)).unwrap() as u16;
+    assert!(matches!(
+        &modules[conj_index as usize].kind,
+        ModuleKind::Conjunction(_)
+    ));
+
+    let mut conj_inputs = modules
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.outputs.contains(&conj_index))
+        .map(|(i, _)| i as u16)
+        .to_hashset();
+
+    let mut prod = 1;
+    let mut button_pushes = 0;
+
+    loop {
+        button_pushes += 1;
+        let done = press_button(&mut modules, &mut pulses, |cur_pulse: &Pulse| {
+            if matches!(cur_pulse.height, PulseHeight::High)
+                && cur_pulse.dest == conj_index
+                && conj_inputs.contains(&cur_pulse.src)
+            {
+                prod *= button_pushes;
+                conj_inputs.remove(&cur_pulse.src);
+            }
+            conj_inputs.is_empty()
+        });
+        if done {
+            return prod;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -167,23 +242,11 @@ broadcaster -> a, b, c
 &inv -> a
 ";
 
-    const TEST_INPUT2: &str = "\
-broadcaster -> a
-%a -> inv, con
-&inv -> b
-%b -> con
-&con -> output
-";
-
     use crate::*;
     #[test]
     fn test_part1() {
         let data = parse(TEST_INPUT1);
         assert_eq!(32000000, part1(&data));
-    }
-    #[test]
-    fn test_part2() {
-        // assert_eq!(0, part1(&parse(TEST_INPUT)));
     }
 }
 
@@ -196,14 +259,14 @@ fn benchmark(s: &str) {
     microbench::bench(&options, "part1", || {
         part1(&data);
     });
-    // microbench::bench(&options, "part2", || {
-    //     part2(&data);
-    // });
-    // microbench::bench(&options, "combined", || {
-    //     let data = parse(&s);
-    //     part1(&data);
-    //     part2(&data);
-    // });
+    microbench::bench(&options, "part2", || {
+        part2(&data);
+    });
+    microbench::bench(&options, "combined", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
 }
 
 fn main() {
