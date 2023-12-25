@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Index, IndexMut};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
@@ -64,5 +64,19 @@ impl<T: SubAssign+Copy, const N:usize, U: Into<Point<T, N>>> SubAssign<U> for Po
         for (i, e) in self.data.iter_mut().enumerate() {
             *e -= rhs.data[i]
         }
+    }
+}
+
+impl<T, const RANK: usize> Index<usize> for Point<T, RANK> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl<T, const RANK: usize> IndexMut<usize> for Point<T, RANK> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.data[index]
     }
 }
