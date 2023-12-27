@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign, Index, IndexMut};
 
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Point<T, const N: usize> {
     data: [T; N],
 }
