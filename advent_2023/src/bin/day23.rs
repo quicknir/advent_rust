@@ -33,63 +33,10 @@ fn parse(input: &str) -> Parsed {
     grid
 }
 
-fn part1(data: &Parsed) -> u64 {
-    let mut stack: Vec<(Coord<2>, [i8; 2], HashSet<Coord<2>>, u64)> =
-        vec![([1, 0].into(), [0, 1], Default::default(), 0)];
-    let mut max_trip = 0;
-    let exit: Coord<2> = {
-        let e: Coord<2> = data.get_dims().into();
-        e - [2, 1]
-    };
-
-    while let Some((mut pos, mut dir, seen_ints, mut dist)) = stack.pop() {
-        while pos != exit {
-            // forward left right
-            let ds = [dir, [-dir[1], -dir[0]], [dir[1], dir[0]]];
-
-            let continuations: [_; 3] = std::array::from_fn(|i| {
-                let d = ds[i];
-                let new_pos = pos + [d[0] as i64, d[1] as i64];
-                match data[new_pos] {
-                    Entry::Path => Some((new_pos, d, 1)),
-                    Entry::Forest => return None,
-                    Entry::Slope(slope_dir) => {
-                        if slope_dir == [-1 * d[0], -1 * d[1]] {
-                            None
-                        } else {
-                            Some((
-                                new_pos + [slope_dir[0] as i64, slope_dir[1] as i64],
-                                slope_dir,
-                                2,
-                            ))
-                        }
-                    }
-                }
-            });
-
-            let first = continuations.iter().position(|x| x.is_some()).unwrap();
-
-            for (new_pos, new_dir, added_dist) in
-                continuations[(first + 1)..].iter().filter_map(|x| *x)
-            {
-                stack.push((new_pos, new_dir, Default::default(), dist + added_dist))
-            }
-            let x = continuations[first].unwrap();
-            pos = x.0;
-            dir = x.1;
-            dist += x.2;
-        }
-        max_trip = std::cmp::max(max_trip, dist);
-    }
-
-    max_trip
-}
-
 #[derive(Default, Debug, Clone)]
 struct Node {
     neighbors: [(u16, u16); 4],
     num_neighbors: u16,
-    coord: Coord<2>,
 }
 
 impl Node {
@@ -106,22 +53,14 @@ fn make_graph<const SLOPES: bool>(data: &Parsed) -> Vec<Node> {
     };
     let mut nodes = vec![Node::default(); 2];
     let mut node_map = HashMap::from([([1, 0].into(), 0), (exit, 1)]);
-    let mut stack: Vec<(u16, Coord<2>, [i8; 2])> = vec![(0, [1, 0].into(), [0, 1])];
+    let mut stack: Vec<(u16, Coord<2>, [i8; 2], bool)> = vec![(0, [1, 0].into(), [0, 1], true)];
 
-    while let Some((from_node, mut pos, mut dir)) = stack.pop() {
+    while let Some((from_node, mut pos, mut dir, mut is_directed)) = stack.pop() {
         let mut dist = 1;
         loop {
             if pos == exit {
                 nodes[from_node as usize].push(1, dist);
                 break;
-            }
-            if SLOPES {
-                if let Entry::Slope(slope_dir) = data[pos] {
-                    pos += [slope_dir[0] as i64, slope_dir[1] as i64];
-                    dist += 1;
-                    dir = slope_dir;
-                    continue;
-                }
             }
             // forward left right
             let ds = [dir, [-dir[1], -dir[0]], [dir[1], dir[0]]];
@@ -130,18 +69,33 @@ fn make_graph<const SLOPES: bool>(data: &Parsed) -> Vec<Node> {
                 let d = ds[i];
                 let new_pos = pos + [d[0] as i64, d[1] as i64];
                 match data[new_pos] {
-                    Entry::Path | Entry::Slope(_) => Some((new_pos, d, 1)),
+                    Entry::Path => Some((new_pos, d, false)),
                     Entry::Forest => None,
+                    Entry::Slope(slope_dir) => {
+                        if !SLOPES {
+                            Some((new_pos, d, false))
+                        } else {
+                            if slope_dir == [-d[0], -d[1]] {
+                                None
+                            } else {
+                                Some((new_pos, d, true))
+                            }
+                        }
+                    }
                 }
             });
 
             let num_dirs = continuations.iter().filter(|x| x.is_some()).count();
+            if num_dirs == 0 {
+                break;
+            }
             if num_dirs == 1 {
                 // fast path out
                 let cont = continuations.iter().filter_map(|x| *x).next().unwrap();
                 pos = cont.0;
                 dir = cont.1;
-                dist += cont.2;
+                dist += 1;
+                is_directed = is_directed || cont.2;
                 continue;
             }
 
@@ -151,29 +105,22 @@ fn make_graph<const SLOPES: bool>(data: &Parsed) -> Vec<Node> {
                     let dest = *occ.get();
 
                     let n1 = &mut nodes[from_node as usize];
-                    if !n1.neighbors.iter().any(|x| x.0 == dest) {
-                        n1.push(dest, dist);
-                        nodes[dest as usize].push(from_node, dist);
-                    }
+                    n1.push(dest, dist);
                 }
                 hash_map::Entry::Vacant(vac) => {
                     // Never arrived at node; insert, queue children
                     let dest = nodes.len() as u16;
                     vac.insert(dest);
-                    let mut n2 = Node {
-                        num_neighbors: 1,
-                        coord: pos,
-                        ..Default::default()
-                    };
-                    n2.neighbors[0] = (from_node, dist);
+                    let mut n2 = Node::default();
+                    if !is_directed {
+                        n2.push(from_node, dist);
+                    }
                     nodes.push(n2);
                     let n1 = &mut nodes[from_node as usize];
-                    if !n1.neighbors.iter().any(|x| x.0 == dest) {
-                        n1.push(dest, dist);
-                    }
+                    n1.push(dest, dist);
 
                     for c in continuations.iter().filter_map(|x| *x) {
-                        stack.push((dest, c.0, c.1))
+                        stack.push((dest, c.0, c.1, c.2))
                     }
                 }
             }
@@ -207,6 +154,11 @@ fn max_graph_path(nodes: &[Node]) -> u64 {
     }
 
     max_path
+}
+
+fn part1(data: &Parsed) -> u64 {
+    let d = make_graph::<true>(data);
+    max_graph_path(&d) - 1
 }
 
 fn part2(data: &Parsed) -> u64 {
@@ -245,7 +197,10 @@ mod tests {
     #[test]
     fn test_part1() {
         let x = make_graph::<true>(&parse(TEST_INPUT));
-        assert_eq!(94, part1(&parse(TEST_INPUT)));
+        for n in &x {
+            println!("{:?}", n);
+        }
+        assert_eq!(94, max_graph_path(&x));
     }
     #[test]
     fn test_part2() {
