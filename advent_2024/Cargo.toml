@@ -1,0 +1,10 @@
+[package]
+name = "advent_2024"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+utils = { path = "../utils" }
+anyhow = { version = "1.0.75", features = ["backtrace"] }
+microbench = "0.5.0"
+rayon = "1.8.0"
