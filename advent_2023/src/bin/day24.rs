@@ -109,15 +109,23 @@ mod tests {
     }
 }
 
+fn checked(b: &[u8]) -> i64 {
+    // hello
+    std::str::from_utf8(b).unwrap().parse().unwrap()
+}
+fn unchecked(b: &[u8]) -> i64 {
+    unsafe { std::str::from_utf8_unchecked(b) }.parse().unwrap()
+}
+
 fn benchmark(s: &str) {
     let options = Options::default();
-    microbench::bench(&options, "parsing", || {
-        parse(&s);
-    });
-    let data = parse(&s);
-    microbench::bench(&options, "part1", || {
-        part1(&data)
-    });
+    // microbench::bench(&options, "parsing", || {
+    //     parse(&s);
+    // });
+    // let data = parse(&s);
+    // microbench::bench(&options, "part1", || {
+    //     part1(&data)
+    // });
     // microbench::bench(&options, "part2", || {
     //     part2(&data);
     // });
@@ -126,12 +134,32 @@ fn benchmark(s: &str) {
     //     part1(&data);
     //     part2(&data);
     // });
+    let strs: Vec<_> = s
+        .split_terminator('\n')
+        .flat_map(|line| {
+            let (p_str, v_str) = line.split_once(" @ ").unwrap();
+             let mut v = Vec::with_capacity(6);
+             v.extend(p_str.split(", "));
+             v.extend(v_str.split(", "));
+             v
+        })
+        .map(|s| s.as_bytes()).collect();
+    microbench::bench(&options, "checked", || {
+        strs.iter().map(|b| {
+            checked(b)
+        }).sum::<i64>()
+    });
+    microbench::bench(&options, "unchecked", || {
+        strs.iter().map(|b| {
+            unchecked(b)
+        }).sum::<i64>()
+    });
 }
 
 fn main() {
     let s = read_aoc!();
-    let data = parse(&s);
-    println!("{:?}", part1(&data));
-    println!("{:?}", part2(&data));
+    // let data = parse(&s);
+    // println!("{:?}", part1(&data));
+    // println!("{:?}", part2(&data));
     benchmark(&s);
 }

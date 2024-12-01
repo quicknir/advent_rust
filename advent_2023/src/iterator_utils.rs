@@ -1,7 +1,59 @@
 use std::hash::Hash;
 use std::collections::HashMap;
 use std::collections::HashSet;
-    
+33164834
+// pub trait HashIterator: Sized + Iterator {
+//     type H: FromIterator<Self::Item>;
+// }
+
+// impl<T1: Eq+Hash, T2,  T: Iterator<Item=(T1, T2)>> HashIterator for T {
+//     type H = HashMap<T1, T2>;
+// }
+
+// pub trait ResultHashIterator: Sized + Iterator {
+//     type H: FromIterator<Self::Item>;
+// }
+
+// impl<T1: Eq+Hash, T2,  E, T: Iterator<Item=Result<(T1, T2), E>>> ResultHashIterator for T {
+//     type H = Result<HashMap<T1, T2>, E>;
+// }
+
+// pub trait ResultVecIterator: Sized + Iterator {
+//     type V: FromIterator<Self::Item>;
+// }
+
+// impl<T, E, I: Iterator<Item=Result<T, E>>> ResultVecIterator for I {
+//     type V = Result<Vec<T>, E>;
+// }
+
+// pub trait ResultHashSetIterator: Sized + Iterator {
+//     type S: FromIterator<Self::Item>;
+// }
+
+// impl<T: Eq+Hash, E, I: Iterator<Item=Result<T, E>>> ResultHashSetIterator for I {
+//     type S = Result<HashSet<T>, E>;
+// }
+
+// pub trait IteratorExts : Iterator {
+//     fn to_vec(self) -> Vec<Self::Item> where Self: Sized {
+//         self.collect()
+//     }
+//     fn try_vec(self) -> Self::V where Self:ResultVecIterator {
+//         self.collect()
+//     }
+//     fn to_hashset(self) -> HashSet<Self::Item> where Self: Sized, Self::Item: Eq+Hash {
+//         self.collect()
+//     }
+//     fn try_hashset(self) ->Self::S where Self: ResultHashSetIterator {
+//         self.collect()
+//     }
+//     fn to_hashmap(self) -> Self::H where Self: HashIterator {
+//         self.collect()
+//     }
+//     fn try_hashmap(self) -> Self::H where Self: ResultHashIterator {
+//         self.collect()
+//     }
+// }
 pub trait HashIterator: Sized + Iterator {
     type H: FromIterator<Self::Item>;
 }
