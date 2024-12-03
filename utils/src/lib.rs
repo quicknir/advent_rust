@@ -18,3 +18,4 @@ pub use slotmap::{SlotMap, SlotKey};
 
 // Commonly used containers
 pub use std::collections::{HashSet, HashMap};
+pub use std::cmp::{min,max};
