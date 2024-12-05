@@ -1,5 +1,4 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign, Index, IndexMut};
-
+use std::ops::{Add, AddAssign, Index, IndexMut, Mul, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Point<T, const N: usize> {
@@ -8,9 +7,10 @@ pub struct Point<T, const N: usize> {
 
 impl<T: Default, const N: usize> Point<T, N> {
     pub fn new() -> Self {
-        Point{data: std::array::from_fn(|_| Default::default())}
+        Point {
+            data: std::array::from_fn(|_| Default::default()),
+        }
     }
-
 }
 
 impl<T: Default, const N: usize> Default for Point<T, N> {
@@ -19,9 +19,9 @@ impl<T: Default, const N: usize> Default for Point<T, N> {
     }
 }
 
-impl <T: Clone, const N: usize> From<[T; N]> for Point<T, N> {
+impl<T: Clone, const N: usize> From<[T; N]> for Point<T, N> {
     fn from(value: [T; N]) -> Self {
-        Point::<T, N>{data: value}
+        Point::<T, N> { data: value }
     }
 }
 
@@ -31,16 +31,18 @@ impl<T, const N: usize> AsRef<[T; N]> for Point<T, N> {
     }
 }
 
-impl<T: Add+Copy, const N:usize, U: Into<Point<T, N>>> Add<U> for Point<T, N> {
+impl<T: Add + Copy, const N: usize, U: Into<Point<T, N>>> Add<U> for Point<T, N> {
     type Output = Point<T::Output, N>;
 
     fn add(self, rhs: U) -> Self::Output {
         let rhs = rhs.into();
-        Point{ data: std::array::from_fn(|i| self.data[i] + rhs.data[i])}
+        Point {
+            data: std::array::from_fn(|i| self.data[i] + rhs.data[i]),
+        }
     }
 }
 
-impl<T: AddAssign+Copy, const N:usize, U: Into<Point<T, N>>> AddAssign<U> for Point<T, N> {
+impl<T: AddAssign + Copy, const N: usize, U: Into<Point<T, N>>> AddAssign<U> for Point<T, N> {
     fn add_assign(&mut self, rhs: U) {
         let rhs = rhs.into();
         for (i, e) in self.data.iter_mut().enumerate() {
@@ -49,21 +51,32 @@ impl<T: AddAssign+Copy, const N:usize, U: Into<Point<T, N>>> AddAssign<U> for Po
     }
 }
 
-impl<T: Sub+Copy, const N:usize, U: Into<Point<T, N>>> Sub<U> for Point<T, N> {
+impl<T: Sub + Copy, const N: usize, U: Into<Point<T, N>>> Sub<U> for Point<T, N> {
     type Output = Point<T::Output, N>;
 
     fn sub(self, rhs: U) -> Self::Output {
         let rhs = rhs.into();
-        Point{ data: std::array::from_fn(|i| self.data[i] - rhs.data[i])}
+        Point {
+            data: std::array::from_fn(|i| self.data[i] - rhs.data[i]),
+        }
     }
 }
 
-impl<T: SubAssign+Copy, const N:usize, U: Into<Point<T, N>>> SubAssign<U> for Point<T, N> {
+impl<T: SubAssign + Copy, const N: usize, U: Into<Point<T, N>>> SubAssign<U> for Point<T, N> {
     fn sub_assign(&mut self, rhs: U) {
         let rhs = rhs.into();
         for (i, e) in self.data.iter_mut().enumerate() {
             *e -= rhs.data[i]
         }
+    }
+}
+
+impl<T: Mul<Output = T> + Copy, const N: usize> Mul<T> for Point<T, N> {
+    type Output = Point<T, N>;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        let arr = std::array::from_fn(|i| rhs * self[i]);
+        arr.into()
     }
 }
 
