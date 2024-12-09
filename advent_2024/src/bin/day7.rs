@@ -1,4 +1,5 @@
 use utils::*;
+use microbench::{self, Options};
 
 type Parsed = Vec<(i64, Vec<i64>)>;
 
@@ -12,6 +13,9 @@ fn could_be_true<const THIRD_OPERATOR: bool>(test_value: i64, numbers: &[i64]) -
             } else {
                 continue;
             }
+        }
+        if value >= test_value {
+            continue;
         }
         v.push((value + numbers[index], index + 1));
         v.push((value * numbers[index], index + 1));
@@ -85,9 +89,29 @@ mod tests {
     }
 }
 
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "parsing", || {
+        parse(&s);
+    });
+    let data = parse(&s);
+    microbench::bench(&options, "part1", || {
+        part1(&data);
+    });
+    microbench::bench(&options, "part2", || {
+        part2(&data);
+    });
+    microbench::bench(&options, "combined", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
+}
+
 fn main() {
     let s = read_aoc!();
     let data = parse(&s);
     println!("{:?}", part1(&data));
     println!("{:?}", part2(&data));
+    benchmark(&s);
 }
