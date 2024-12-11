@@ -8,6 +8,3 @@ utils = { path = "../utils" }
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 microbench = "0.5.0"
 rayon = "1.8.0"
-
-[workspace]
-resolver = "3"
