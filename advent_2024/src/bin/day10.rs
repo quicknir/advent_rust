@@ -1,4 +1,5 @@
 use std::mem::replace;
+use microbench::{self, Options};
 
 use utils::*;
 
@@ -76,9 +77,29 @@ fn part2(data: &Parsed) -> i64 {
     total_score
 }
 
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "parsing", || {
+        parse(&s);
+    });
+    let data = parse(&s);
+    microbench::bench(&options, "part1", || {
+        part1(&data);
+    });
+    microbench::bench(&options, "part2", || {
+        part2(&data);
+    });
+    microbench::bench(&options, "combined", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
+}
+
 fn main() {
     let s = read_aoc!();
     let data = parse(&s);
     println!("{:?}", part1(&data));
     println!("{:?}", part2(&data));
+    benchmark(&s);
 }
