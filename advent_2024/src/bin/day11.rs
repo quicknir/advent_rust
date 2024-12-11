@@ -68,8 +68,7 @@ fn benchmark(s: &str) {
 }
 
 fn main() {
-    // let s = read_aoc!();
-    let s = String::from("8793800 1629 65 5 960 0 138983 85629");
+    let s = read_aoc!();
     let data = parse(&s);
     println!("{:?}", do_it(&data, 25));
     println!("{:?}", do_it(&data, 75));
