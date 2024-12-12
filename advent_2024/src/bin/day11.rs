@@ -10,7 +10,6 @@ fn with_cache(stone: i64, blinks: i16, cache: &mut HashMap<(i64, i16), i64>) -> 
     let result = compute_stones(stone, blinks, cache);
     cache.insert((stone, blinks), result);
     result
-    // *cache.entry((stone, blinks)).or_insert_with(|| compute_stones(stone, blinks, cache))
 }
 
 fn compute_stones(stone: i64, blinks: i16, cache: &mut HashMap<(i64, i16), i64>) -> i64
