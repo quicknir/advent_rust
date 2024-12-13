@@ -86,6 +86,13 @@ impl Grid<bool, 2> {
             println!("{}", s);
         }
     }
+
+}
+impl <T> Grid<T, 2> {
+    pub fn iter_coords(&self) -> impl Iterator<Item = Coord<2>> {
+        (0..self.get_dims()[0])
+            .flat_map(move |col| (0..self.get_dims()[1]).map(move |row| Coord::from([col, row])))
+    }
 }
 
 impl<T, const RANK: usize, Idx: Into<Coord<RANK>>> Index<Idx> for Grid<T, RANK> {
