@@ -1,16 +1,17 @@
 use std::{cmp::Reverse, collections::BinaryHeap};
 use utils::*;
+use microbench::{self, Options};
 
-type Parsed = Vec<i64>;
+type Parsed = Vec<i32>;
 
 fn parse(input: &str) -> Parsed {
     input[..(input.len() - 1)]
         .bytes()
-        .map(|b| (b - 48) as i64)
+        .map(|b| (b - 48) as i32)
         .collect()
 }
 
-fn reverse_blocks<'a>(data: &'a [i64]) -> impl Iterator<Item = usize> + 'a {
+fn reverse_blocks<'a>(data: &'a [i32]) -> impl Iterator<Item = usize> + 'a {
     (0..data.len())
         .rev()
         .step_by(2)
@@ -58,10 +59,10 @@ fn part1(data: &Parsed) -> i64 {
     checksum
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 struct Dense {
-    start: i64,
-    num_blocks: i64,
+    start: i32,
+    num_blocks: i32,
 }
 
 fn part2(data: &Parsed) -> i64 {
@@ -87,28 +88,30 @@ fn part2(data: &Parsed) -> i64 {
     let mut checksum = 0;
 
     for (id, file) in files.iter().enumerate().rev() {
-        let array_start = file.num_blocks as usize - 1;
-        let found_space = spaces[array_start..]
+        let found_space = spaces[(file.num_blocks as usize - 1)..]
             .iter_mut()
-            .enumerate()
-            .filter_map(|(i, h)| h.peek_mut().map(|p| (p.0.start, i)))
-            .min();
-        let Dense{mut start, num_blocks} = *file;
+            .filter(|h| h.peek().is_some())
+            .max_by_key(|h| *h.peek().unwrap());
+        let Dense { mut start, num_blocks, } = *file;
 
-        if let Some((_, space_offset)) = found_space {
-            println!("Array start {array_start}, space offset {space_offset}");
-            let Reverse(space) = spaces[array_start+space_offset].pop().unwrap();
+        if let Some(heap) = found_space {
+            let Reverse(space) = heap.pop().unwrap();
             start = space.start;
+            println!("Moving id {id} back to {start}");
+            assert!(num_blocks <= space.num_blocks);
             if num_blocks < space.num_blocks {
-                let leftover_space = Dense{start:start+num_blocks, num_blocks:space.num_blocks-num_blocks};
+                let leftover_space = Dense {
+                    start: start + num_blocks,
+                    num_blocks: space.num_blocks - num_blocks,
+                };
+                println!("Leftovers: {:?}", leftover_space);
                 spaces[leftover_space.num_blocks as usize - 1].push(Reverse(leftover_space));
             }
         }
 
-        for pos in start..(start+num_blocks) {
-            checksum += (id as i64) *pos;
+        for pos in start..(start + num_blocks) {
+            checksum += (id as i64) * (pos as i64);
         }
-
     }
 
     checksum
@@ -128,9 +131,29 @@ mod tests {
     }
 }
 
+fn benchmark(s: &str) {
+    let options = Options::default();
+    microbench::bench(&options, "parsing", || {
+        parse(&s);
+    });
+    let data = parse(&s);
+    microbench::bench(&options, "part1", || {
+        part1(&data);
+    });
+    microbench::bench(&options, "part2", || {
+        part2(&data);
+    });
+    microbench::bench(&options, "combined", || {
+        let data = parse(&s);
+        part1(&data);
+        part2(&data);
+    });
+}
+
 fn main() {
     let s = read_aoc!();
     let data = parse(&s);
     println!("{:?}", part1(&data));
     println!("{:?}", part2(&data));
+    // benchmark(&s);
 }
